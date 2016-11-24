@@ -212,8 +212,16 @@
 		}
 	};
 
-	var addWindowItem = function(c, merger, partWith, orderWith)
+	var addWindowItem = function(c, merger, partWith, orderWith, between)
 	{
+		var rowsBetween = between != null;
+		var preced = null, follow = null;
+		if (rowsBetween)
+		{
+			preced = between[0];
+			follow = between[1];
+		}
+
 		return c.stratifyWith(partWith) //
 		.flatMap(function(part)
 		{
@@ -221,8 +229,7 @@
 
 			var partRows = [];
 
-			var layer = null;
-			var res = null;
+			var layer = null, res = null, length = null;
 			for (var l = 0; l < ordered.length; l++)
 			{
 				layer = ordered[l];
@@ -232,15 +239,34 @@
 					partRows.push(layer[k]);
 				}
 
-				res = merger(partRows);
-
-				for (var k = 0; k < layer.length; k++)
+				if (!rowsBetween)
 				{
-					layer[k].push(res);
+					length = partRows.length;
+					res = merger(partRows, 0, length, length - 1);
+
+					for (var k = 0; k < layer.length; k++)
+					{
+						layer[k].push(res);
+					}
 				}
 			}
 
-			return flatten(ordered, 1);
+			ordered = null;
+
+			if (rowsBetween)
+			{
+				var begin = null, end = null;
+				length = partRows.length;
+				for (var i = 0; i < length; i++)
+				{
+					begin = Math.max(preced == null ? 0 : i - preced, 0);
+					end = Math.min(follow == null ? length //
+					: i + follow + 1, length);
+					partRows[i].push(merger(partRows, begin, end, i));
+				}
+			}
+
+			return partRows;
 		});
 	};
 
@@ -1896,8 +1922,9 @@
 				var merger = item["merger"];
 				var partWith = generateRowComparator(item["part"]);
 				var orderWith = generateRowComparator(item["order"]);
+				var between = item["scope"];
 
-				c = addWindowItem(c, merger, partWith, orderWith);
+				c = addWindowItem(c, merger, partWith, orderWith, between);
 			}
 
 			return c;
@@ -2041,29 +2068,36 @@
 		return undefined;
 	};
 
-	function Source(array)
+	function Source(array, begin, end)
 	{
-		function SourceIterator()
+		begin = Math.max(begin == null ? 0 : begin, 0);
+		end = Math.min(end == null ? array.length : end, array.length);
+
+		function SourceIterator(array, begin, end)
 		{
-			this.index = 0;
+			this.array = array;
+			this.index = begin;
+			this.end = end;
 		}
 		SourceIterator.prototype = new Iterator();
 		SourceIterator.prototype.close = function()
 		{
+			this.array = null;
 			this.index = null;
+			this.end = null;
 		};
 		SourceIterator.prototype.hasNext = function()
 		{
-			return this.index < array.length;
+			return this.index < this.end;
 		};
 		SourceIterator.prototype.next = function()
 		{
-			return array[this.index++];
+			return this.array[this.index++];
 		};
 
 		this.iterator = function()
 		{
-			return new SourceIterator();
+			return new SourceIterator(array, begin, end);
 		};
 	}
 	Source.prototype = new Iterable();
@@ -2106,7 +2140,8 @@
 	{
 		if (data instanceof Array)
 		{
-			return new Canal().source(new Source(data));
+			return new Canal().source(new Source(data, arguments[1],
+					arguments[2]));
 		}
 		else if (data instanceof Function)
 		{
@@ -2194,6 +2229,7 @@
 		this.merger = null;
 		this.part = null;
 		this.order = null;
+		this.scope = null;
 	}
 	Item.prototype.merge = function()
 	{
@@ -2229,6 +2265,18 @@
 		else
 		{
 			return this.order;
+		}
+	};
+	Item.prototype.between = function(preceding, following)
+	{
+		if (arguments.length > 0)
+		{
+			this.scope = [ preceding, following ];
+			return this;
+		}
+		else
+		{
+			return this.scope;
 		}
 	};
 
