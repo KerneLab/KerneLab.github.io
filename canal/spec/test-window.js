@@ -71,10 +71,11 @@ describe("Test window", function()
 	it("window() count distinct", function()
 	{
 		var f = Canal.field;
+		var distinct = Canal.wf.distinct;
 		
 		var result = Canal.of(dataSource).select()
 		.window(
-			Canal.wf.count(f("rnk"), true)
+			Canal.wf.count(distinct(f("rnk")))
 				.partBy(function(d){return d.grp;})
 				.as("count")
 		).collect();
@@ -145,6 +146,35 @@ describe("Test window", function()
 		]);
 	});
 	
+	it("window() fold distinct", function()
+	{
+		var f = Canal.field;
+		var distinct = Canal.wf.distinct;
+		
+		var result = Canal.of(dataSource).select()
+		.window(
+			Canal.wf.fold(function(){return [];},
+						function(last,data){
+							last.push(data);
+							return last;
+					  	},
+						distinct(f("rnk")))
+				.partBy(function(d){return d.grp;})
+				.as("fold_uniq")
+		).collect();
+	
+		expect(result).to.eql([
+			{"id":"1","grp":"1","rnk":1,"sal":1000.00,"fold_uniq":[1,2,3]},
+			{"id":"2","grp":"1","rnk":1,"sal":1100.00,"fold_uniq":[1,2,3]},
+			{"id":"3","grp":"1","rnk":2,"sal":1200.00,"fold_uniq":[1,2,3]},
+			{"id":"4","grp":"1","rnk":2,"sal":1300.00,"fold_uniq":[1,2,3]},
+			{"id":"5","grp":"1","rnk":3,"sal":1400.00,"fold_uniq":[1,2,3]},
+			{"id":"6","grp":"2","rnk":1,"sal":1500.00,"fold_uniq":[1,2]},
+			{"id":"7","grp":"2","rnk":1,"sal":1600.00,"fold_uniq":[1,2]},
+			{"id":"8","grp":"2","rnk":2,"sal":1700.00,"fold_uniq":[1,2]}
+		]);
+	});
+	
 	it("window() sum", function()
 	{
 		var sum = Canal.wf.sum(function(d){return d.sal;})
@@ -168,6 +198,30 @@ describe("Test window", function()
 			{"id":"6","grp":"2","rnk":1,"sal":1500.00,"sum_sal":3100.00},
 			{"id":"7","grp":"2","rnk":1,"sal":1600.00,"sum_sal":3100.00},
 			{"id":"8","grp":"2","rnk":2,"sal":1700.00,"sum_sal":4800.00}
+		]);
+	});
+	
+	it("window() sum distinct", function()
+	{
+		var f = Canal.field;
+		var distinct = Canal.wf.distinct;
+		
+		var result = Canal.of(dataSource).select()
+		.window(
+			Canal.wf.sum(distinct(f("rnk")))
+				.partBy(function(d){return d.grp;})
+				.as("sum_uniq")
+		).collect();
+	
+		expect(result).to.eql([
+			{"id":"1","grp":"1","rnk":1,"sal":1000.00,"sum_uniq":6},
+			{"id":"2","grp":"1","rnk":1,"sal":1100.00,"sum_uniq":6},
+			{"id":"3","grp":"1","rnk":2,"sal":1200.00,"sum_uniq":6},
+			{"id":"4","grp":"1","rnk":2,"sal":1300.00,"sum_uniq":6},
+			{"id":"5","grp":"1","rnk":3,"sal":1400.00,"sum_uniq":6},
+			{"id":"6","grp":"2","rnk":1,"sal":1500.00,"sum_uniq":3},
+			{"id":"7","grp":"2","rnk":1,"sal":1600.00,"sum_uniq":3},
+			{"id":"8","grp":"2","rnk":2,"sal":1700.00,"sum_uniq":3}
 		]);
 	});
 	
@@ -1272,6 +1326,90 @@ describe("Test window", function()
 			{"id":"6","grp":"2","rnk":1,"sal":1500.00,"cum_dst":2/3},
 			{"id":"7","grp":"2","rnk":1,"sal":1600.00,"cum_dst":2/3},
 			{"id":"8","grp":"2","rnk":2,"sal":1700.00,"cum_dst":1.0}
+		]);
+	});
+	
+	it("window() map_part()", function()
+	{
+		var map_part = Canal.wf.map_part(function(p){return p[1].sal;})
+		.partBy(function(d){return d.grp;})
+		.orderBy(function(d){return d.sal;})
+		.as("sec_sal");
+		
+		expect(typeof map_part.aggregator()).to.be("function");
+		expect(typeof map_part.updater()).to.be("function");
+		expect(typeof map_part.expressor()).to.be("function");
+		
+		var result = Canal.of(dataSource).select()
+		.window(
+			map_part
+		).collect();
+	
+		expect(result).to.eql([
+			{"id":"1","grp":"1","rnk":1,"sal":1000.00,"sec_sal":1100.00},
+			{"id":"2","grp":"1","rnk":1,"sal":1100.00,"sec_sal":1100.00},
+			{"id":"3","grp":"1","rnk":2,"sal":1200.00,"sec_sal":1100.00},
+			{"id":"4","grp":"1","rnk":2,"sal":1300.00,"sec_sal":1100.00},
+			{"id":"5","grp":"1","rnk":3,"sal":1400.00,"sec_sal":1100.00},
+			{"id":"6","grp":"2","rnk":1,"sal":1500.00,"sec_sal":1600.00},
+			{"id":"7","grp":"2","rnk":1,"sal":1600.00,"sec_sal":1600.00},
+			{"id":"8","grp":"2","rnk":2,"sal":1700.00,"sec_sal":1600.00}
+		]);
+	});
+	
+	it("window() first_value()", function()
+	{
+		var first_value = Canal.wf.first_value(function(r){return r.sal;})
+		.partBy(function(d){return d.grp;})
+		.orderBy(function(d){return d.sal;},false)
+		.as("first_sal");
+		
+		expect(typeof first_value.aggregator()).to.be("function");
+		expect(typeof first_value.updater()).to.be("function");
+		expect(typeof first_value.expressor()).to.be("function");
+		
+		var result = Canal.of(dataSource).select()
+		.window(
+			first_value
+		).collect();
+	
+		expect(result).to.eql([
+			{"id":"5","grp":"1","rnk":3,"sal":1400.00,"first_sal":1400.00},
+			{"id":"4","grp":"1","rnk":2,"sal":1300.00,"first_sal":1400.00},
+			{"id":"3","grp":"1","rnk":2,"sal":1200.00,"first_sal":1400.00},
+			{"id":"2","grp":"1","rnk":1,"sal":1100.00,"first_sal":1400.00},
+			{"id":"1","grp":"1","rnk":1,"sal":1000.00,"first_sal":1400.00},
+			{"id":"8","grp":"2","rnk":2,"sal":1700.00,"first_sal":1700.00},
+			{"id":"7","grp":"2","rnk":1,"sal":1600.00,"first_sal":1700.00},
+			{"id":"6","grp":"2","rnk":1,"sal":1500.00,"first_sal":1700.00}
+		]);
+	});
+	
+	it("window() last_value()", function()
+	{
+		var last_value = Canal.wf.last_value(function(r){return r.sal;})
+		.partBy(function(d){return d.grp;})
+		.orderBy(function(d){return d.sal;})
+		.as("last_sal");
+		
+		expect(typeof last_value.aggregator()).to.be("function");
+		expect(typeof last_value.updater()).to.be("function");
+		expect(typeof last_value.expressor()).to.be("function");
+		
+		var result = Canal.of(dataSource).select()
+		.window(
+			last_value
+		).collect();
+	
+		expect(result).to.eql([
+			{"id":"1","grp":"1","rnk":1,"sal":1000.00,"last_sal":1400.00},
+			{"id":"2","grp":"1","rnk":1,"sal":1100.00,"last_sal":1400.00},
+			{"id":"3","grp":"1","rnk":2,"sal":1200.00,"last_sal":1400.00},
+			{"id":"4","grp":"1","rnk":2,"sal":1300.00,"last_sal":1400.00},
+			{"id":"5","grp":"1","rnk":3,"sal":1400.00,"last_sal":1400.00},
+			{"id":"6","grp":"2","rnk":1,"sal":1500.00,"last_sal":1700.00},
+			{"id":"7","grp":"2","rnk":1,"sal":1600.00,"last_sal":1700.00},
+			{"id":"8","grp":"2","rnk":2,"sal":1700.00,"last_sal":1700.00}
 		]);
 	});
 });
