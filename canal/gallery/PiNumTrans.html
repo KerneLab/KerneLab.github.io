@@ -1,0 +1,161 @@
+<html>
+<head>
+<meta charset="utf-8">
+<title>π数字转移矩阵</title>
+<script
+	src="https://cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canal.js/canal.min.js"></script>
+<style>
+td {
+	font-size: 13px;
+	padding: 5px;
+	min-width: 40px;
+}
+</style>
+</head>
+<body>
+
+	<div id="main">
+		<table>
+			<tr>
+				<td></td>
+				<td v-for="j in axis" align="center"><b>{{j}}</b></td>
+			</tr>
+			<tr v-for="i in axis" :key="i">
+				<td align="center"><b>{{i}}</b></td>
+				<td v-for="j in axis" :key="total+'-'+i+'-'+j" :style="style(i,j)">
+					{{(trans[i+'-'+j]*100/total).toFixed(4)}}</td>
+			</tr>
+		</table>
+	</div>
+
+	<script type="text/javascript">
+		new Vue({
+			el : "#main",
+			data : {
+				axis : [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ],
+				trans : {},
+				total : 1
+			},
+			mounted : function()
+			{
+				var self = this;
+
+				$.post("data/pi10w.txt", {}, function(data)
+				{
+					var goon = true;
+
+					var source = function(idx)
+					{
+						return idx < data.length ? data[idx] : Canal.eod();
+					};
+
+					var count = {
+						"total" : 0
+					};
+
+					var pairs = Canal.of(source, function(c)
+					{
+						if (count.total >= data.length - 1)
+						{
+							goon = false;
+						}
+					}) //
+					.zip(Canal.of(source).skip(1)) //
+					.map(function(d)
+					{
+						return d[0] + "-" + d[1];
+					});
+
+					var skips = 0, limit = 1000;
+
+					var calc = function()
+					{
+						count = pairs.skip(skips).limit(limit) //
+						.fold(count, function(last, d)
+						{
+							var l = last[d];
+							if (l == null)
+							{
+								l = 0;
+							}
+							l++;
+							last[d] = l;
+							last.total++;
+							return last;
+						});
+
+						self.trans = count;
+						self.total = count.total;
+
+						skips += limit;
+
+						if (goon)
+						{
+							setTimeout(calc, 0);
+						}
+					};
+
+					setTimeout(calc, 0);
+
+				}, "json");
+			},
+			computed : {
+				max : function()
+				{
+					return Canal.of(this.trans).filter(function(d)
+					{
+						return d[0] != "total";
+					}).values().filter(function(d)
+					{
+						return !isNaN(d);
+					}).reduce(function(a, b)
+					{
+						return a > b ? a : b;
+					}).get();
+				},
+				min : function()
+				{
+					return Canal.of(this.trans).filter(function(d)
+					{
+						return d[0] != "total";
+					}).values().filter(function(d)
+					{
+						return !isNaN(d);
+					}).reduce(function(a, b)
+					{
+						return a < b ? a : b;
+					}).get();
+				},
+				span : function()
+				{
+					return this.max - this.min;
+				}
+			},
+			methods : {
+				ratio : function(d)
+				{
+					return isNaN(d) ? 0 : (d - this.min) / this.span;
+				},
+				color : function(i, j)
+				{
+					var r = this.ratio(this.trans[i + "-" + j]);
+					return Math.floor(r * 200 + 55);
+				},
+				style : function(i, j)
+				{
+					var color = this.color(i, j);
+					var revs = (color + 128) % 256;
+					return {
+						"background-color" : "rgb(0," + color + ",0)",
+						//"color" : color <= 128 ? "#FFF" : "#000"
+						"color" : "rgb(" + revs + "," + revs + "," + revs + ")"
+					};
+				}
+			}
+		});
+	</script>
+
+</body>
+</html>
