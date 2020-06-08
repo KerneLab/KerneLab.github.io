@@ -7,25 +7,24 @@
 <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canal.js/canal.min.js"></script>
 <style>
-td {
-	font-size: 13px;
-	padding: 5px;
-	min-width: 40px;
+#table td {
+	font-size: 18px;
+	padding: 8px;
 }
 </style>
 </head>
 <body>
 
 	<div id="main">
-		<table>
+		<table id="table">
 			<tr>
 				<td></td>
 				<td v-for="j in axis" align="center"><b>{{j}}</b></td>
 			</tr>
 			<tr v-for="i in axis" :key="i">
 				<td align="center"><b>{{i}}</b></td>
-				<td v-for="j in axis" :key="total+'-'+i+'-'+j" :style="style(i,j)">
-					{{(trans[i+'-'+j]*100/total).toFixed(4)}}</td>
+				<td v-for="j in axis" :key="total+'-'+i+'-'+j" :style="style(i,j)"
+					align="center">{{(trans[i+'-'+j]*100/total).toFixed(4)}}</td>
 			</tr>
 		</table>
 	</div>
@@ -141,16 +140,14 @@ td {
 				color : function(i, j)
 				{
 					var r = this.ratio(this.trans[i + "-" + j]);
-					return Math.floor(r * 200 + 55);
+					return Math.floor(r * 155 + 35);
 				},
 				style : function(i, j)
 				{
 					var color = this.color(i, j);
-					var revs = (color + 128) % 256;
 					return {
 						"background-color" : "rgb(0," + color + ",0)",
-						//"color" : color <= 128 ? "#FFF" : "#000"
-						"color" : "rgb(" + revs + "," + revs + "," + revs + ")"
+						"color" : "#FFF"
 					};
 				}
 			}
