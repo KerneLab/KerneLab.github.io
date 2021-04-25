@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Bin Dist</title>
+<script
+	src="https://cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canal.js/canal.min.js"></script>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="../../scripts/tools.js"></script>
+</head>
+<body>
+
+	<div>
+		<span>p</span> <input id="inputP" type="text" value="0.5" /> <span>samples</span>
+		<input id="inputSamples" type="text" value="20" /> <span>tests</span>
+		<input id="inputTests" type="text" value="100" />
+		<button id="button">Draw</button>
+	</div>
+	<svg></svg>
+	<script type="text/javascript">
+		function drawBarChart(dataset)
+		{
+			var data = Canal.of(dataset).map(function(d)
+			{
+				return d.value;
+			});
+
+			var minVal = 0;
+			var maxVal = data.reduce(function(a, b)
+			{
+				return a > b ? a : b;
+			}).get();
+
+			var barCount = data.count();
+
+			var canvasWidth = 800;
+			var canvasHeight = 600;
+
+			var barMaxHeight = 400;
+			var barMaxWidth = 40;
+			var barSpace = Math.min(barMaxWidth, Math.floor(canvasWidth / barCount));
+			var barGap = Math.floor(barSpace / 10);
+			var barWidth = barSpace - barGap;
+
+			var fontSize = '14px';
+			var textHeight = 20;
+			var textGap = 5;
+			var textMinWidth = 30;
+
+			var paddingLeft = 0;
+			var paddingTop = textHeight + textGap + 50;
+
+			var scaleY = d3.scaleLinear().domain([ minVal, maxVal ]).range([ 0, barMaxHeight ]);
+
+			var max = 300;
+
+			//创建svg
+			var svg = d3.select('svg') //
+			.attr("width", canvasWidth) //
+			.attr("height", canvasHeight) //
+			.style('font-size', fontSize);
+
+			//根据数据动态创建rect
+			//d3 rect x，y为左上角坐标，因此设定位置时需要用到最大值，使底部处于同一水平线
+			var rect = svg.selectAll('rect') //
+			.data(dataset, function(d, i)
+			{
+				return i;
+			});
+
+			rect.enter() //
+			.append('rect') //
+			.attr('fill', 'steelblue') //
+			.merge(rect) //
+			.transition().duration(300) //
+			.attr('x', function(d, i)
+			{
+				return i * (barWidth + barGap) + paddingLeft
+			}) //
+			.attr('width', barWidth) //
+			.transition() //
+			.attr('y', function(d)
+			{
+				return barMaxHeight - scaleY(d.value) + paddingTop
+			}) //
+			.attr('height', function(d)
+			{
+				return scaleY(d.value)
+			});
+
+			rect.exit().remove();
+
+			//在每个柱上标明数据
+			//设置text位置后，设置text-anchor使文字居中，x,y即中心点
+			var text = svg.selectAll('text.label') //
+			.data(dataset, function(d, i)
+			{
+				return i;
+			});
+
+			text.enter() //
+			.append('text') //
+			.classed("label", true) //
+			.attr('text-anchor', 'middle') //
+			.attr('fill', 'grey') //
+			.merge(text) //
+			.transition().duration(300) //
+			.attr('x', function(d, i)
+			{
+				return i * (barWidth + barGap) + paddingLeft + barWidth / 2
+			}) //
+			.transition() //
+			.attr('y', function(d)
+			{
+				return barMaxHeight - scaleY(d.value) + paddingTop - textGap
+			}) //
+			.tween("text", function(d, i, c)
+			{
+				var element = d3.select(this);
+				var s = parseFloat(c[i].textContent.replace("%", ""));
+				s = isNaN(s) ? 0 : s;
+				var i = d3.interpolateNumber(s, d.value * 100);
+				var fmt = d3.format("0.1f");
+				return function(t)
+				{
+					return barWidth < textMinWidth ? "" : element.text(fmt(i(t)) + "%");
+				};
+			});
+
+			text.exit().remove();
+
+			var ax = svg.selectAll('text.ax') //
+			.data(dataset, function(d, i)
+			{
+				return i;
+			});
+
+			ax.enter() //
+			.append('text') //
+			.classed("ax", true) //
+			.attr('text-anchor', 'middle') //
+			.attr('fill', 'black') //
+			.merge(ax) //
+			.attr('x', function(d, i)
+			{
+				return i * (barWidth + barGap) + paddingLeft + barWidth / 2
+			}) //
+			.attr('y', function(d)
+			{
+				return barMaxHeight + paddingTop + textHeight;
+			}) //
+			.text(function(d, i)
+			{
+				return barWidth < textMinWidth ? "" : i;
+			});
+
+			ax.exit().remove();
+		}
+
+		$(function()
+		{
+			var dist = null;
+
+			var binTest = function(pVal, samples, tests)
+			{
+				return Canal.of(function(i)
+				{
+					return i;
+				}).limit(samples + 1).keyBy(function(d)
+				{
+					return d;
+				}).leftJoin(Canal.of(function(i)
+				{
+					return i;
+				}).limit(tests).map(function(d)
+				{
+					return Canal.of(function(i)
+					{
+						return Math.random();
+					}).limit(samples).filter(function(d)
+					{
+						return d < pVal;
+					}).count();
+				}).map(function(d)
+				{
+					return [ d, 1 ];
+				}).groupByKey().mapValues(function(ds)
+				{
+					return ds.length;
+				})).mapJoint(function(l, r, k)
+				{
+					return [ k, r.or(0) ];
+				}).collectAsMap();
+			};
+
+			var calcHandle = null;
+
+			var calcAndDraw = function()
+			{
+				var pVal = parseFloat($("#inputP").val());
+				var samples = parseInt($("#inputSamples").val());
+				var tests = parseInt($("#inputTests").val());
+
+				var res = binTest(pVal, samples, tests);
+
+				if (dist == null || Tools.size(res) != Tools.size(dist))
+				{
+					dist = res;
+				}
+				else
+				{
+					dist = Canal.of(dist).join(Canal.of(res)).mapJoint(function(l, r, k)
+					{
+						return [ k, l + r ];
+					}).collectAsMap();
+				}
+
+				var total = Canal.of(dist).values().reduce(function(a, b)
+				{
+					return a + b;
+				}).get();
+
+				var prob = Canal.of(dist).mapValues(function(v)
+				{
+					return v / total;
+				}).sortBy(function(d)
+				{
+					return parseInt(d[0]);
+				}).map(function(d)
+				{
+					return {
+						"value" : d[1]
+					};
+				}).collect();
+
+				drawBarChart(prob);
+
+				calcHandle = setTimeout(calcAndDraw, 500);
+			};
+
+			$("#button").click(function()
+			{
+				if ($(this).text() == "Draw")
+				{
+					$(this).text("Stop");
+					calcAndDraw();
+				}
+				else
+				{
+					$(this).text("Draw");
+					clearTimeout(calcHandle);
+				}
+			});
+		});
+	</script>
+</body>
+</html>
