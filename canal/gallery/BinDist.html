@@ -2,23 +2,27 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Bin Dist</title>
+<title>Binomial Distribution</title>
 <script
 	src="https://cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canal.js/canal.min.js"></script>
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script src="../../scripts/tools.js"></script>
+<!-- <script src="../scripts/jquery-1.10.2.min.js"></script>
+<script src="../scripts/canal.min.js"></script>
+<script src="../scripts/d3.v4.min.js"></script>
+<script src="../scripts/tools.js"></script> -->
 </head>
 <body>
 
-	<div>
-		<span>p</span> <input id="inputP" type="text" value="0.5" /> <span>samples</span>
-		<input id="inputSamples" type="text" value="20" /> <span>tests</span>
-		<input id="inputTests" type="text" value="100" />
-		<button id="button">Draw</button>
+	<div style="margin-bottom: 5px">
+		<span>Prob.</span> <input id="inputP" type="text" value="0.5"
+			style="width: 100px" /> <span>Samples</span> <input
+			id="inputSamples" type="text" value="20" style="width: 100px" /> <span>Tests</span>
+		<input id="inputTests" type="text" value="100" style="width: 100px" />
+		<button id="button">Run</button>
 	</div>
-	<svg></svg>
+	<svg style="border: 1px solid #666"></svg>
 	<script type="text/javascript">
 		function drawBarChart(dataset)
 		{
@@ -35,26 +39,27 @@
 
 			var barCount = data.count();
 
-			var canvasWidth = 800;
-			var canvasHeight = 600;
+			var canvasMaxWidth = 700;
+			var paddingLeft = 10;
+			var paddingRight = 10;
 
-			var barMaxHeight = 400;
-			var barMaxWidth = 40;
-			var barSpace = Math.min(barMaxWidth, Math.floor(canvasWidth / barCount));
+			var barMaxHeight = 350;
+			var barMaxWidth = 30;
+			var barSpace = Math.min(barMaxWidth, (canvasMaxWidth - paddingLeft - paddingRight) / barCount);
 			var barGap = Math.floor(barSpace / 10);
 			var barWidth = barSpace - barGap;
 
-			var fontSize = '14px';
-			var textHeight = 20;
-			var textGap = 5;
-			var textMinWidth = 30;
+			var fontSize = Math.floor(barSpace / 3) + 'px';
+			var textHeight = barSpace / 2;
+			var textGap = textHeight / 3;
 
-			var paddingLeft = 0;
-			var paddingTop = textHeight + textGap + 50;
+			var paddingTop = textHeight + textGap + 20;
+			var paddingBottom = textHeight + textGap + 10;
+
+			var canvasWidth = Math.min(canvasMaxWidth, barSpace * barCount + paddingLeft + paddingRight);
+			var canvasHeight = barMaxHeight + paddingTop + paddingBottom;
 
 			var scaleY = d3.scaleLinear().domain([ minVal, maxVal ]).range([ 0, barMaxHeight ]);
-
-			var max = 300;
 
 			//创建svg
 			var svg = d3.select('svg') //
@@ -125,7 +130,7 @@
 				var fmt = d3.format("0.1f");
 				return function(t)
 				{
-					return barWidth < textMinWidth ? "" : element.text(fmt(i(t)) + "%");
+					return textHeight < 2 ? "" : element.text(fmt(i(t)) + "%");
 				};
 			});
 
@@ -153,7 +158,7 @@
 			}) //
 			.text(function(d, i)
 			{
-				return barWidth < textMinWidth ? "" : i;
+				return textHeight < 2 ? "" : i;
 			});
 
 			ax.exit().remove();
@@ -242,14 +247,14 @@
 
 			$("#button").click(function()
 			{
-				if ($(this).text() == "Draw")
+				if ($(this).text() == "Run")
 				{
-					$(this).text("Stop");
+					$(this).text("Pause");
 					calcAndDraw();
 				}
 				else
 				{
-					$(this).text("Draw");
+					$(this).text("Run");
 					clearTimeout(calcHandle);
 				}
 			});
