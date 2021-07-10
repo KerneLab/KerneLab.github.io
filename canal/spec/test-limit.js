@@ -10,6 +10,20 @@ it("limit(2) 1 2 3", function()
 	expect(result).to.eql([ 1, 2 ]);
 });
 
+it("limit(null) 1 2 3", function()
+{
+	var result = Canal.of([ 1, 2, 3 ]) //
+	.limit(null).collect();
+	expect(result).to.eql([ 1, 2, 3 ]);
+});
+
+it("limit(-1) 1 2 3", function()
+{
+	var result = Canal.of([ 1, 2, 3 ]) //
+	.limit(-1).collect();
+	expect(result).to.eql([ 1, 2, 3 ]);
+});
+
 it("limit(3) 1 2 3", function()
 {
 	var result = Canal.of([ 1, 2, 3 ]) //
