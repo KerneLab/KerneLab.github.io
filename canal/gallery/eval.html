@@ -13,13 +13,7 @@ body, div, textarea, span, th, td {
 body {
 	margin: 3px;
 	padding: 0px;
-}
-
-table, table th, table td {
-	border-width: 1px;
-	border-style: solid;
-	border-color: #999;
-	border-collapse: collapse;
+	background-color: #FFF;
 }
 
 .nowrap {
@@ -30,9 +24,27 @@ div.part {
 	margin-bottom: 3px;
 }
 
+table.frame, table.frame td {
+	border: 0px none;
+	border-collapse: collapse;
+}
+
+table.result, table.result th, table.result td {
+	border-width: 1px;
+	border-style: solid;
+	border-color: #999;
+	border-collapse: collapse;
+}
+
 table.result th, table.result td {
 	height: 23px;
 	padding: 2px;
+}
+
+.fixedhead {
+	top: -1px;
+	position: sticky;
+	background-color: #FFF;
 }
 </style>
 </head>
@@ -40,25 +52,37 @@ table.result th, table.result td {
 
 	<div id="main">
 		<div class="part">
-			<textarea v-model="raw" style="width: 100%; height: 150px;"></textarea>
+			<textarea v-model="raw" rows="10" style="width: 100%;"></textarea>
 		</div>
 		<div class="part">
-			<label v-for="(t,i) in types" :key="i"><input v-model="type"
-				type="radio" :value="t" />{{ t }}</label> <label><input
-				v-model="head" type="checkbox" true-value="true" false-value="false" />head</label>
+			<table class="frame" style="width: 100%">
+				<tr>
+					<td align="left"><label v-for="(t,i) in types" :key="i"><input
+							v-model="type" type="radio" :value="t" />{{ t }}</label> <label><input
+							v-model="head" type="checkbox" true-value="true"
+							false-value="false" />head</label></td>
+					<td align="right"><a
+						href="https://github.com/KerneLab/Canal/wiki/API_Reference_CN"
+						target="_blank">help</a></td>
+				</tr>
+			</table>
 		</div>
 		<div class="part">
-			<textarea v-model="expr" style="width: 100%; height: 100px;"></textarea>
+			<textarea v-model="expr" rows="6" style="width: 100%;"></textarea>
 		</div>
 		<div class="part" style="color: #F00">{{ error }}</div>
 		<div class="part">
 			<table class="result">
-				<tr v-if="tableHead!=null">
-					<th v-for="(head,h) in tableHead">{{ head }}</th>
-				</tr>
-				<tr v-for="(row,r) in tableBody">
-					<td v-for="(col,c) in row" class="nowrap">{{ col }}</td>
-				</tr>
+				<thead>
+					<tr v-if="tableHead!=null" class="fixedhead">
+						<th v-for="(head,h) in tableHead">{{ head }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr v-for="(row,r) in tableBody">
+						<td v-for="(col,c) in row" class="nowrap">{{ col }}</td>
+					</tr>
+				</tbody>
 			</table>
 		</div>
 	</div>
@@ -67,14 +91,24 @@ table.result th, table.result td {
 		new Vue({
 			el : "#main",
 			data : {
-				raw : null,
-				type : "raw",
-				head : "false",
-				expr : "c.count()",
+				raw : "id, dept, name, gender, age, salary" //
+						+ "\n1, A, john, M, 36, 8000.00" //
+						+ "\n2, B, mike, M, 31, 7500.00" //
+						+ "\n3, A, rose, F, 28, 6700.00" //
+						+ "\n4, A, tim, M, 29, 7200.00" //
+						+ "\n5, B, lucy, F, 33, 7100.00",
+				type : "csv",
+				head : "true",
+				expr : "c.select(\"id\", \"dept\", \"name\", \"gender\", " //
+						+ "\n    Canal.field(d=>parseInt(d.age)).as(\"age\"), " //
+						+ "\n    Canal.field(d=>parseInt(d.salary)).as(\"salary\")" //
+						+ "\n).window(" //
+						+ "\n    Canal.wf.sum(d=>d.salary).partBy(d=>d.dept).as(\"sum_sal\")" //
+						+ "\n).collect()",
 				error : null,
 				types : [ "raw", "csv", "tsv" ],
 				splitor : {
-					"csv" : new RegExp(",", "g"),
+					"csv" : new RegExp("\\s*,\\s*", "g"),
 					"tsv" : new RegExp("\t", "g")
 				}
 			},
