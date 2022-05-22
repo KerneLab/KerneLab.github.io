@@ -5,10 +5,7 @@ describe("Test select", function()
 {
 	it("select()", function()
 	{
-		var f = Canal.field;
-		
-		var salpick = function(d){return d.sal+1000;};
-		salpick.alias = "salplus";
+		var f = Canal.col;
 		
 		var result = Canal.of([
 			{"id":"1","grp":"1","rnk":1,"sal":1000.00},
@@ -21,9 +18,9 @@ describe("Test select", function()
 			{"id":"8","grp":"2","rnk":2,"sal":1700.00}
 		]).select("id",
 				f("grp"),
-				f("rnk","rank"),
-				f(salpick),
-				f(null,"null")
+				f("rnk").as("rank"),
+				f(function(d){return d.sal+1000;}).as("salplus"),
+				f(null).as("null")
 		).collect();
 		
 		expect(result).to.eql([
@@ -40,7 +37,7 @@ describe("Test select", function()
 	
 	it("select() with mapping", function()
 	{
-		var f = Canal.field;
+		var f = Canal.col;
 		
 		var result = Canal.of([
 			{"id":"1","grp":"1","rnk":1,"sal":1000.00},

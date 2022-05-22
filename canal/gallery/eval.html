@@ -102,8 +102,8 @@ table.result th, table.result td {
 				type : "csv",
 				head : "true",
 				expr : "c.select(\"id\", \"dept\", \"name\", \"gender\", " //
-						+ "\n    Canal.field(d=>parseInt(d.age)).as(\"age\"), " //
-						+ "\n    Canal.field(d=>parseInt(d.salary)).as(\"salary\")" //
+						+ "\n    Canal.col(d=>parseInt(d.age)).as(\"age\"), " //
+						+ "\n    Canal.col(d=>parseInt(d.salary)).as(\"salary\")" //
 						+ "\n).window(" //
 						+ "\n    Canal.wf.sum(d=>d.salary).partBy(d=>d.dept).as(\"sum_sal\")" //
 						+ "\n).collect()",
