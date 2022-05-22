@@ -1,0 +1,235 @@
+<html>
+<head>
+<meta charset="utf-8">
+<title>Evaluator</title>
+<script src="https://unpkg.com/jquery@1/dist/jquery.min.js"></script>
+<script src="https://unpkg.com/vue@2/dist/vue.min.js"></script>
+<script src="https://unpkg.com/canal.js@1/canal.min.js"></script>
+<style>
+body, div, textarea, span, th, td {
+	font-size: 13px;
+}
+
+body {
+	margin: 0px;
+	padding: 0px;
+}
+
+table, table th, table td {
+	border-width: 1px;
+	border-style: solid;
+	border-color: #999;
+	border-collapse: collapse;
+}
+
+.nowrap {
+	white-space: nowrap;
+}
+
+div.part {
+	margin-bottom: 5px;
+}
+
+table.result th, table.result td {
+	height: 23px;
+	padding: 2px;
+}
+</style>
+</head>
+<body>
+
+	<div id="main">
+		<div class="part">
+			<textarea v-model="raw" style="width: 100%; height: 150px;"></textarea>
+		</div>
+		<div class="part">
+			<label v-for="(t,i) in types" :key="i"><input v-model="type"
+				type="radio" :value="t" />{{ t }}</label> <label><input
+				v-model="head" type="checkbox" true-value="true" false-value="false" />head</label>
+		</div>
+		<div class="part">
+			<textarea v-model="expr" style="width: 100%; height: 100px;"></textarea>
+		</div>
+		<div class="part" style="color: #F00">{{ error }}</div>
+		<div class="part">
+			<table class="result">
+				<tr v-if="tableHead!=null">
+					<th v-for="(head,h) in tableHead">{{ head }}</th>
+				</tr>
+				<tr v-for="(row,r) in tableBody">
+					<td v-for="(col,c) in row" class="nowrap">{{ col }}</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+
+	<script type="text/javascript">
+		new Vue({
+			el : "#main",
+			data : {
+				raw : null,
+				type : "raw",
+				head : "false",
+				expr : "c.count()",
+				error : null,
+				types : [ "raw", "csv", "tsv" ],
+				splitor : {
+					"csv" : new RegExp(",", "g"),
+					"tsv" : new RegExp("\t", "g")
+				}
+			},
+			mounted : function()
+			{
+			},
+			computed : {
+				lines : function()
+				{
+					if (this.raw == null)
+					{
+						return [];
+					}
+					else
+					{
+						return this.raw.split(new RegExp("\n", "g"));
+					}
+				},
+				rows : function()
+				{
+					if ("raw" == this.type || this.lines == null || this.lines.length == 0)
+					{
+						return this.lines;
+					}
+
+					var head = null;
+					if (this.head == "true")
+					{
+						head = this.split(this.lines[0]);
+					}
+
+					var self = this;
+					var canal = Canal.of(this.lines);
+					if (head != null)
+					{
+						canal = canal.skip(1);
+					}
+					return canal.map(function(line)
+					{
+						var row = self.split(line);
+						if (head != null)
+						{
+							var r = {};
+							for (var i = 0; i < head.length; i++)
+							{
+								r[head[i]] = row[i];
+							}
+							row = r;
+						}
+						return row;
+					});
+				},
+				result : function()
+				{
+					try
+					{
+						this.error = null;
+
+						var canal = this.rows instanceof Canal ? this.rows : Canal.of(this.rows);
+
+						var res = this.eval(this.expr, {
+							'c' : canal
+						});
+
+						if (res instanceof Canal)
+						{
+							res = res.collect();
+						}
+
+						return res;
+					}
+					catch (err)
+					{
+						this.error = err;
+						return this.rows;
+					}
+				},
+				tableHead : function()
+				{
+					var res = this.result;
+					if (!$.isArray(res) || res.length == 0)
+					{
+						return null;
+					}
+
+					var h = res[0];
+					if ($.isPlainObject(h))
+					{
+						var head = [];
+						for ( var k in h)
+						{
+							head.push(k);
+						}
+						return head;
+					}
+					else
+					{
+						return null;
+					}
+				},
+				tableBody : function()
+				{
+					var res = this.result;
+					if (!$.isArray(res) || res.length == 0)
+					{
+						return [ [ res ] ];
+					}
+
+					var head = this.tableHead;
+
+					var h = res[0];
+					if (head != null)
+					{
+						return Canal.of(res).map(function(d)
+						{
+							return Canal.of(head).map(function(k)
+							{
+								return d[k];
+							}).collect();
+						}).collect();
+					}
+					else if ($.isArray(h))
+					{
+						return res;
+					}
+					else
+					{
+						return Canal.of(res).map(function(d)
+						{
+							return [ d ];
+						}).collect();
+					}
+				}
+			},
+			methods : {
+				eval : function(code, ctx)
+				{
+					return (new Function('with(this){"use strict";\nreturn (' + code + '\n);}')).call(ctx);
+				},
+				split : function(line)
+				{
+					if (line == null || this.type == "raw")
+					{
+						return line;
+					}
+					var split = this.splitor[this.type];
+					if (split == null)
+					{
+						return line;
+					}
+					return line.split(split);
+				}
+			}
+		});
+	</script>
+
+</body>
+</html>
