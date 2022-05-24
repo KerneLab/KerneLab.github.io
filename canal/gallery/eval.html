@@ -8,8 +8,10 @@
 <script src="https://unpkg.com/vue@2/dist/vue.min.js"></script>
 <script src="https://unpkg.com/canal.js@1/canal.min.js"></script>
 <style>
-body, div, textarea, span, th, td {
+body, div, textarea, span, th, td, a:link, a:visited, a:hover, a:active
+	{
 	font-size: 12px;
+	color: #000;
 }
 
 body {
@@ -31,16 +33,24 @@ table.frame, table.frame td {
 	border-collapse: collapse;
 }
 
-table.result, table.result th, table.result td {
+table.grid, table.grid th, table.grid td {
 	border-width: 1px;
 	border-style: solid;
 	border-color: #999;
 	border-collapse: collapse;
 }
 
-table.result th, table.result td {
+table.grid th, table.grid td {
 	height: 23px;
 	padding: 2px;
+}
+
+input.cell, textarea.cell {
+	border: 0px none #FFF;
+}
+
+span.button {
+	cursor: pointer;
 }
 
 .fixedhead {
@@ -54,18 +64,40 @@ table.result th, table.result td {
 
 	<div id="main">
 		<div class="part">
-			<textarea v-model="raw" rows="10" style="width: 100%;"></textarea>
-		</div>
-		<div class="part">
-			<table class="frame" style="width: 100%">
-				<tr>
-					<td align="left"><label v-for="(t,i) in types" :key="i"><input
-							v-model="type" type="radio" :value="t" />{{ t }}</label> <label><input
-							v-model="head" type="checkbox" true-value="true"
-							false-value="false" />head</label></td>
-					<td align="right"><a
-						href="https://github.com/KerneLab/Canal/wiki/API_Reference_CN"
-						target="_blank">help</a></td>
+			<table class="frame" style="width: 100%;">
+				<tr valign="top">
+					<td v-for="(s,i) in src" :key="i"
+						style="min-width: 210px; padding-right: 2px;">
+						<table class="grid" style="width: 100%;">
+							<tr>
+								<td><input v-model="s.id" class="cell"
+									style="float: left; width: 70%" type="text" /> <span
+									class="button" @click="remove(i)"
+									style="float: right; font-size: 14px; font-weight: bold"
+									title="Remove">×&nbsp;</span> <span class="button"
+									@click="append(i)"
+									style="float: right; font-size: 14px; font-weight: bold"
+									title="Append">＋&nbsp;</span></td>
+							</tr>
+							<tr>
+								<td><textarea v-model="s.raw" class="cell" rows="8"
+										wrap="off" style="width: 100%; overflow: auto;"></textarea></td>
+							</tr>
+							<tr>
+								<td><div style="float: left">
+										<label v-for="(t,j) in types" :key="j"><input
+											v-model="s.type" type="radio" :value="t" />{{ t }}</label> <label><input
+											v-model="s.head" type="checkbox" true-value="true"
+											false-value="false" />head</label>
+									</div>
+									<div style="float: right">
+										<a
+											href="https://github.com/KerneLab/Canal/wiki/API_Reference_CN"
+											target="_blank">help</a>
+									</div></td>
+							</tr>
+						</table>
+				</td>
 				</tr>
 			</table>
 		</div>
@@ -74,7 +106,7 @@ table.result th, table.result td {
 		</div>
 		<div class="part" style="color: #F00">{{ error }}</div>
 		<div class="part">
-			<table class="result">
+			<table class="grid">
 				<thead>
 					<tr v-if="tableHead!=null" class="fixedhead">
 						<th v-for="(head,h) in tableHead">{{ head }}</th>
@@ -90,181 +122,222 @@ table.result th, table.result td {
 	</div>
 
 	<script type="text/javascript">
-		new Vue({
-			el : "#main",
-			data : {
-				raw : "id, dept, name, gender, age, salary" //
-						+ "\n1, A, john, M, 36, 8000.00" //
-						+ "\n2, B, mike, M, 31, 7500.00" //
-						+ "\n3, A, rose, F, 28, 6700.00" //
-						+ "\n4, A, tim, M, 29, 7200.00" //
-						+ "\n5, B, lucy, F, 33, 7100.00",
-				type : "csv",
-				head : "true",
-				expr : "c.select(\"id\", \"dept\", \"name\", \"gender\", " //
-						+ "\n    Canal.col(d=>parseInt(d.age)).as(\"age\"), " //
-						+ "\n    Canal.col(d=>parseInt(d.salary)).as(\"salary\")" //
-						+ "\n).window(" //
-						+ "\n    Canal.wf.sum(d=>d.salary).partBy(d=>d.dept).as(\"sum_sal\")" //
-						+ "\n).collect()",
-				error : null,
-				types : [ "raw", "csv", "tsv" ],
-				splitor : {
-					"csv" : new RegExp("\\s*,\\s*", "g"),
-					"tsv" : new RegExp("\t", "g")
-				}
-			},
-			mounted : function()
-			{
-			},
-			computed : {
-				lines : function()
+		new Vue(
 				{
-					if (this.raw == null)
+					el : "#main",
+					data : {
+						src : [ {
+							"id" : "c",
+							"raw" : "id\tdept\tname\tsex\tage" //
+									+ "\n1\tA\tjohn\tM\t36" //
+									+ "\n2\tB\tmike\tM\t31" //
+									+ "\n3\tA\trose\tF\t28" //
+									+ "\n4\tA\ttim\tM\t29" //
+									+ "\n5\tB\tlucy\tF\t33",
+							"type" : "tsv",
+							"head" : "true"
+						}, {
+							"id" : "d",
+							"raw" : "id, month, salary" //
+									+ "\n1, 202101, 8000.00" //
+									+ "\n2, 202101, 7500.00" //
+									+ "\n3, 202101, 6700.00" //
+									+ "\n4, 202101, 7200.00",
+							"type" : "csv",
+							"head" : "true"
+						} ],
+						expr : "c.select(\"id\", \"dept\", \"name\", $(\"sex\").as(\"gender\"), $(d=>parseInt(d.age)).as(\"age\")).keyBy(x=>x.id)" //
+								+ "\n.leftJoin(d.select(\"id\", \"month\", $(d=>parseInt(d.salary)).as(\"salary\")).keyBy(x=>x.id))" //
+								+ "\n.mapJoint((l,r) => Object.assign(new Object(l),r.or({\"salary\":0})))" //
+								+ "\n.window(Canal.wf.sum(d=>d.salary).partBy(d=>d.dept).as(\"sum_sal\"))" //
+								+ "\n.collect()",
+						error : null,
+						types : [ "raw", "csv", "tsv" ],
+						splitor : {
+							"csv" : new RegExp("\\s*,\\s*", "g"),
+							"tsv" : new RegExp("\t", "g")
+						},
+						lineSplit : new RegExp("\n", "g")
+					},
+					mounted : function()
 					{
-						return [];
-					}
-					else
-					{
-						return this.raw.split(new RegExp("\n", "g"));
-					}
-				},
-				rows : function()
-				{
-					if ("raw" == this.type || this.lines == null || this.lines.length == 0)
-					{
-						return this.lines;
-					}
-
-					var head = null;
-					if (this.head == "true")
-					{
-						head = this.split(this.lines[0]);
-					}
-
-					var self = this;
-					var canal = Canal.of(this.lines);
-					if (head != null)
-					{
-						canal = canal.skip(1);
-					}
-					return canal.map(function(line)
-					{
-						var row = self.split(line);
-						if (head != null)
+					},
+					computed : {
+						ctx : function()
 						{
-							var r = {};
-							for (var i = 0; i < head.length; i++)
+							var self = this;
+							var ctx = Canal.of(this.src).keyBy(function(d)
 							{
-								r[head[i]] = row[i];
+								return d.id;
+							}).mapValues(function(d)
+							{
+								return Canal.of(self.rows(d));
+							}).collectAsMap();
+
+							ctx["$"] = Canal.col;
+
+							return ctx;
+						},
+						result : function()
+						{
+							try
+							{
+								this.error = null;
+
+								var res = this.eval(this.expr, this.ctx);
+
+								if (res instanceof Canal)
+								{
+									res = res.collect();
+								}
+
+								return res;
 							}
-							row = r;
-						}
-						return row;
-					});
-				},
-				result : function()
-				{
-					try
-					{
-						this.error = null;
-
-						var canal = this.rows instanceof Canal ? this.rows : Canal.of(this.rows);
-
-						var res = this.eval(this.expr, {
-							'c' : canal
-						});
-
-						if (res instanceof Canal)
-						{
-							res = res.collect();
-						}
-
-						return res;
-					}
-					catch (err)
-					{
-						this.error = err;
-						return this.rows;
-					}
-				},
-				tableHead : function()
-				{
-					var res = this.result;
-					if (!$.isArray(res) || res.length == 0)
-					{
-						return null;
-					}
-
-					var h = res[0];
-					if ($.isPlainObject(h))
-					{
-						var head = [];
-						for ( var k in h)
-						{
-							head.push(k);
-						}
-						return head;
-					}
-					else
-					{
-						return null;
-					}
-				},
-				tableBody : function()
-				{
-					var res = this.result;
-					if (!$.isArray(res) || res.length == 0)
-					{
-						return [ [ res ] ];
-					}
-
-					var head = this.tableHead;
-
-					var h = res[0];
-					if (head != null)
-					{
-						return Canal.of(res).map(function(d)
-						{
-							return Canal.of(head).map(function(k)
+							catch (err)
 							{
-								return d[k];
-							}).collect();
-						}).collect();
-					}
-					else if ($.isArray(h))
-					{
-						return res;
-					}
-					else
-					{
-						return Canal.of(res).map(function(d)
+								this.error = err;
+								return this.rows;
+							}
+						},
+						tableHead : function()
 						{
-							return [ d ];
-						}).collect();
+							var res = this.result;
+							if (!$.isArray(res) || res.length == 0)
+							{
+								return null;
+							}
+
+							var h = res[0];
+							if ($.isPlainObject(h))
+							{
+								var head = [];
+								for ( var k in h)
+								{
+									head.push(k);
+								}
+								return head;
+							}
+							else
+							{
+								return null;
+							}
+						},
+						tableBody : function()
+						{
+							var res = this.result;
+							if (!$.isArray(res) || res.length == 0)
+							{
+								return [ [ res ] ];
+							}
+
+							var head = this.tableHead;
+
+							var h = res[0];
+							if (head != null)
+							{
+								return Canal.of(res).map(function(d)
+								{
+									return Canal.of(head).map(function(k)
+									{
+										return d[k];
+									}).collect();
+								}).collect();
+							}
+							else if ($.isArray(h))
+							{
+								return res;
+							}
+							else
+							{
+								return Canal.of(res).map(function(d)
+								{
+									return [ d ];
+								}).collect();
+							}
+						}
+					},
+					methods : {
+						append : function(i)
+						{
+							this.src.splice(i + 1, 0, {
+								"id" : String.fromCharCode("c".charCodeAt(0) + this.src.length),
+								"raw" : "",
+								"type" : "csv",
+								"head" : "true"
+							});
+						},
+						remove : function(i)
+						{
+							this.src.splice(i, 1);
+						},
+						lines : function(raw)
+						{
+							if (raw == null)
+							{
+								return [];
+							}
+							else
+							{
+								return raw.split(this.lineSplit);
+							}
+						},
+						rows : function(src)
+						{
+							var lines = this.lines(src.raw);
+							if ("raw" == src.type || lines.length == 0)
+							{
+								return lines;
+							}
+
+							var head = null;
+							if (src.head == "true")
+							{
+								head = this.split(lines[0], src.type);
+							}
+
+							var self = this;
+							var canal = Canal.of(lines);
+							if (head != null)
+							{
+								canal = canal.skip(1);
+							}
+							return canal.map(function(line)
+							{
+								var row = self.split(line, src.type);
+								if (head != null)
+								{
+									var r = {};
+									for (var i = 0; i < head.length; i++)
+									{
+										r[head[i]] = row[i];
+									}
+									row = r;
+								}
+								return row;
+							});
+						},
+						eval : function(code, ctx)
+						{
+							return (new Function('with(this){"use strict";\nreturn (' + code + '\n);}')).call(ctx);
+						},
+						split : function(line, type)
+						{
+							if (line == null || type == "raw")
+							{
+								return line;
+							}
+							var split = this.splitor[type];
+							if (split == null)
+							{
+								return line;
+							}
+							else
+							{
+								return line.split(split);
+							}
+						}
 					}
-				}
-			},
-			methods : {
-				eval : function(code, ctx)
-				{
-					return (new Function('with(this){"use strict";\nreturn (' + code + '\n);}')).call(ctx);
-				},
-				split : function(line)
-				{
-					if (line == null || this.type == "raw")
-					{
-						return line;
-					}
-					var split = this.splitor[this.type];
-					if (split == null)
-					{
-						return line;
-					}
-					return line.split(split);
-				}
-			}
-		});
+				});
 	</script>
 
 </body>
