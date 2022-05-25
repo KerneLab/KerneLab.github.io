@@ -28,19 +28,20 @@ div.part {
 	margin-bottom: 3px;
 }
 
-table.frame, table.frame td {
+table.frame, table.frame>td {
 	border: 0px none;
 	border-collapse: collapse;
+	padding: 0px;
 }
 
-table.grid, table.grid th, table.grid td {
+table.grid, th.grid, td.grid {
 	border-width: 1px;
 	border-style: solid;
 	border-color: #999;
 	border-collapse: collapse;
 }
 
-table.grid th, table.grid td {
+th.grid, td.grid {
 	height: 23px;
 	padding: 2px;
 }
@@ -67,37 +68,45 @@ span.button {
 			<table class="frame" style="width: 100%;">
 				<tr valign="top">
 					<td v-for="(s,i) in src" :key="i"
-						style="min-width: 210px; padding-right: 2px;">
+						style="min-width: 220px; padding-right: 2px;">
 						<table class="grid" style="width: 100%;">
 							<tr>
-								<td><input v-model="s.id" class="cell"
-									style="float: left; width: 70%" type="text" /> <span
-									class="button" @click="remove(i)"
-									style="float: right; font-size: 14px; font-weight: bold"
-									title="Remove">×&nbsp;</span> <span class="button"
-									@click="append(i)"
-									style="float: right; font-size: 14px; font-weight: bold"
-									title="Append">＋&nbsp;</span></td>
+								<td class="grid">
+									<table class="frame" style="width: 100%">
+										<tr>
+											<td align="left" style="width: 75%"><input
+												v-model="s.id" class="cell" style="float: left; width: 100%"
+												type="text" /></td>
+											<td align="right"><span class="button"
+												@click="append(i)"
+												style="font-size: 14px; font-weight: bold" title="Append">＋&nbsp;</span><span
+												class="button" @click="remove(i)"
+												style="font-size: 14px; font-weight: bold" title="Remove">×&nbsp;</span></td>
+										</tr>
+									</table>
+								</td>
 							</tr>
 							<tr>
-								<td><textarea v-model="s.raw" class="cell" rows="8"
-										wrap="off" style="width: 100%; overflow: auto;"></textarea></td>
+								<td class="grid"><textarea v-model="s.raw" class="cell"
+										rows="8" wrap="off" style="width: 100%; overflow: auto;"></textarea></td>
 							</tr>
 							<tr>
-								<td><div style="float: left">
-										<label v-for="(t,j) in types" :key="j"><input
-											v-model="s.type" type="radio" :value="t" />{{ t }}</label> <label><input
-											v-model="s.head" type="checkbox" true-value="true"
-											false-value="false" />head</label>
-									</div>
-									<div style="float: right">
-										<a
-											href="https://github.com/KerneLab/Canal/wiki/API_Reference_CN"
-											target="_blank">help</a>
-									</div></td>
+								<td class="grid">
+									<table class="frame" style="width: 100%">
+										<tr>
+											<td align="left"><label v-for="(t,j) in types" :key="j"><input
+													v-model="s.type" type="radio" :value="t" />{{ t }}</label> <label><input
+													v-model="s.head" type="checkbox" true-value="true"
+													false-value="false" />head</label></td>
+											<td align="right"><a style="vertical-align: middle"
+												href="https://github.com/KerneLab/Canal/wiki/API_Reference_CN"
+												target="_blank">help</a></td>
+										</tr>
+									</table>
+								</td>
 							</tr>
 						</table>
-				</td>
+					</td>
 				</tr>
 			</table>
 		</div>
@@ -109,12 +118,12 @@ span.button {
 			<table class="grid">
 				<thead>
 					<tr v-if="tableHead!=null" class="fixedhead">
-						<th v-for="(head,h) in tableHead">{{ head }}</th>
+						<th v-for="(head,h) in tableHead" class="grid">{{ head }}</th>
 					</tr>
 				</thead>
 				<tbody>
 					<tr v-for="(row,r) in tableBody">
-						<td v-for="(col,c) in row" class="nowrap">{{ col }}</td>
+						<td v-for="(col,c) in row" class="grid nowrap">{{ col }}</td>
 					</tr>
 				</tbody>
 			</table>
