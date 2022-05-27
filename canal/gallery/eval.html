@@ -123,7 +123,8 @@ span.button {
 				</thead>
 				<tbody>
 					<tr v-for="(row,r) in tableBody">
-						<td v-for="(col,c) in row" class="grid nowrap">{{ col }}</td>
+						<td v-for="(col,c) in row" class="grid nowrap"
+							:style="stylesOfCell(col)">{{ col }}</td>
 					</tr>
 				</tbody>
 			</table>
@@ -155,9 +156,9 @@ span.button {
 							"type" : "csv",
 							"head" : "true"
 						} ],
-						expr : "c.select(\"id\", \"dept\", \"name\", $(\"sex\").as(\"gender\"), $(d=>parseInt(d.age)).as(\"age\")).keyBy(x=>x.id)" //
-								+ "\n.leftJoin(d.select(\"id\", \"month\", $(d=>parseInt(d.salary)).as(\"salary\")).keyBy(x=>x.id))" //
-								+ "\n.mapJoint((l,r) => Object.assign(new Object(l),r.or({\"salary\":0})))" //
+						expr : "c.select(\"*\", $(d=>parseInt(d.age)).as(\"age\")).keyBy(x=>x.id)" //
+								+ "\n.leftJoin(d.select(\"*\", $(d=>parseInt(d.salary)).as(\"salary\")).keyBy(x=>x.id))" //
+								+ "\n.mapJoint((ll,r) => {var l=Canal.Some(ll);return Canal.row(l.$(\"*\"),r.$(\"month\"),r.$(\"salary\"));})" //
 								+ "\n.window(Canal.wf.sum(d=>d.salary).partBy(d=>d.dept).as(\"sum_sal\"))" //
 								+ "\n.collect()",
 						error : null,
@@ -344,6 +345,19 @@ span.button {
 							{
 								return line.split(split);
 							}
+						},
+						stylesOfCell : function(val)
+						{
+							var s = {
+								'text-align' : typeof (val) === "number" ? "right" : "left"
+							};
+
+							if (val == null)
+							{
+								s['background-color'] = "#DDD";
+							}
+
+							return s;
 						}
 					}
 				});
