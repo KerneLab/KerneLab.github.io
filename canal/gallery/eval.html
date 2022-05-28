@@ -7,6 +7,13 @@
 <script src="https://unpkg.com/jquery@1/dist/jquery.min.js"></script>
 <script src="https://unpkg.com/vue@2/dist/vue.min.js"></script>
 <script src="https://unpkg.com/canal.js@1/canal.min.js"></script>
+<script src="https://unpkg.com/codemirror@5/lib/codemirror.js""></script>
+<script
+	src="https://unpkg.com/codemirror@5/mode/javascript/javascript.js"></script>
+<link rel="stylesheet"
+	href="https://unpkg.com/codemirror@5/lib/codemirror.css">
+<link rel="stylesheet"
+	href="https://unpkg.com/codemirror@5/theme/eclipse.css">
 <style>
 body, div, textarea, span, th, td, a:link, a:visited, a:hover, a:active
 	{
@@ -25,11 +32,13 @@ body {
 }
 
 div.part {
+	border: 0px none #FFF;
+	padding: 0px;
 	margin-bottom: 3px;
 }
 
-table.frame, table.frame>td {
-	border: 0px none;
+table.frame, td.frame {
+	border: 0px none #FFF;
 	border-collapse: collapse;
 	padding: 0px;
 }
@@ -59,6 +68,16 @@ span.button {
 	position: sticky;
 	background-color: #FFF;
 }
+
+.CodeMirror {
+	border: 1px solid #999;
+	height: auto;
+}
+
+.CodeMirror-scroll {
+	height: auto;
+	max-height: 250px;
+}
 </style>
 </head>
 <body>
@@ -67,17 +86,17 @@ span.button {
 		<div class="part" style="width: 100%; overflow-x: auto">
 			<table class="frame" style="width: 100%;">
 				<tr valign="top">
-					<td v-for="(s,i) in src" :key="i"
+					<td v-for="(s,i) in src" :key="i" class="frame"
 						style="min-width: 220px; padding-right: 2px;">
 						<table class="grid" style="width: 100%;">
 							<tr>
 								<td class="grid">
 									<table class="frame" style="width: 100%">
 										<tr>
-											<td align="left" style="width: 75%"><input
+											<td align="left" class="frame" style="width: 75%"><input
 												v-model="s.id" class="cell" style="float: left; width: 100%"
 												type="text" /></td>
-											<td align="right"><span class="button"
+											<td align="right" class="frame"><span class="button"
 												@click="append(i)"
 												style="font-size: 14px; font-weight: bold" title="Append">＋&nbsp;</span><span
 												class="button" @click="remove(i)"
@@ -88,17 +107,20 @@ span.button {
 							</tr>
 							<tr>
 								<td class="grid"><textarea v-model="s.raw" class="cell"
-										rows="8" wrap="off" style="width: 100%; overflow: auto;"></textarea></td>
+										rows="8" wrap="off" style="width: 100%; overflow: auto;"></textarea>
+								</td>
 							</tr>
 							<tr>
 								<td class="grid">
 									<table class="frame" style="width: 100%">
 										<tr>
-											<td align="left"><label v-for="(t,j) in types" :key="j"><input
+											<td align="left" class="frame"><label
+												v-for="(t,j) in types" :key="j"><input
 													v-model="s.type" type="radio" :value="t" />{{ t }}</label> <label><input
 													v-model="s.head" type="checkbox" true-value="true"
 													false-value="false" />head</label></td>
-											<td align="right"><a style="vertical-align: middle"
+											<td align="right" class="frame"><a
+												style="vertical-align: middle"
 												href="https://github.com/KerneLab/Canal/wiki/API_Reference_CN"
 												target="_blank">help</a></td>
 										</tr>
@@ -111,7 +133,7 @@ span.button {
 			</table>
 		</div>
 		<div class="part">
-			<textarea v-model="expr" rows="6" style="width: 100%;"></textarea>
+			<textarea v-model="expr" ref="exprText" rows="6" style="width: 100%;"></textarea>
 		</div>
 		<div class="part" style="color: #F00">{{ error }}</div>
 		<div class="part">
@@ -161,6 +183,7 @@ span.button {
 								+ "\n.mapJoint((ll,r) => {var l=Canal.Some(ll);return Canal.row(l.$(\"*\"),r.$(\"month\"),r.$(\"salary\"));})" //
 								+ "\n.window(Canal.wf.sum(d=>d.salary).partBy(d=>d.dept).as(\"sum_sal\"))" //
 								+ "\n.collect()",
+						editor : null,
 						error : null,
 						types : [ "raw", "csv", "tsv" ],
 						splitor : {
@@ -171,6 +194,20 @@ span.button {
 					},
 					mounted : function()
 					{
+						var self = this;
+						this.editor = CodeMirror.fromTextArea(this.$refs.exprText, {
+							"mode" : "javascript",
+							"lineNumbers" : true,
+							"lineWrapping" : true,
+							"indentWithTabs" : true,
+							"smartIndent" : false,
+							"tabSize" : 2,
+							"viewportMargin" : Infinity
+						});
+						this.editor.on("change", function(e)
+						{
+							self.expr = e.getValue();
+						});
 					},
 					computed : {
 						ctx : function()
