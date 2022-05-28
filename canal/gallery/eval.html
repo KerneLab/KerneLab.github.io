@@ -146,7 +146,7 @@ span.button {
 				<tbody>
 					<tr v-for="(row,r) in tableBody">
 						<td v-for="(col,c) in row" class="grid nowrap"
-							:style="stylesOfCell(col)">{{ col }}</td>
+							:style="stylesOfCell(col)">{{ textOfCell(col) }}</td>
 					</tr>
 				</tbody>
 			</table>
@@ -160,17 +160,17 @@ span.button {
 					data : {
 						src : [ {
 							"id" : "c",
-							"raw" : "id\tdept\tname\tsex\tage" //
-									+ "\n1\tA\tjohn\tM\t36" //
-									+ "\n2\tB\tmike\tM\t31" //
-									+ "\n3\tA\trose\tF\t28" //
-									+ "\n4\tA\ttim\tM\t29" //
-									+ "\n5\tB\tlucy\tF\t33",
+							"raw" : "id\tdept\tname\tsex\tbirth:date" //
+									+ "\n1\tA\tjohn\tM\t1986-01-20" //
+									+ "\n2\tB\tmike\tM\t1991-07-13" //
+									+ "\n3\tA\trose\tF\t1994-05-08" //
+									+ "\n4\tA\ttim\tM\t1992-11-01" //
+									+ "\n5\tB\tlucy\tF\t1990-09-27",
 							"type" : "tsv",
 							"head" : "true"
 						}, {
 							"id" : "d",
-							"raw" : "id, month, salary" //
+							"raw" : "id, month, salary:float" //
 									+ "\n1, 202101, 8000.00" //
 									+ "\n2, 202101, 7500.00" //
 									+ "\n3, 202101, 6700.00" //
@@ -178,10 +178,11 @@ span.button {
 							"type" : "csv",
 							"head" : "true"
 						} ],
-						expr : "c.select(\"*\", $(d=>parseInt(d.age)).as(\"age\")).keyBy(x=>x.id)" //
-								+ "\n.leftJoin(d.select(\"*\", $(d=>parseInt(d.salary)).as(\"salary\")).keyBy(x=>x.id))" //
-								+ "\n.mapJoint((ll,r) => {var l=Canal.Some(ll);return Canal.row(l.$(\"*\"),r.$(\"month\"),r.$(\"salary\"));})" //
+						expr : "c.select(\"*\",$(d=>Math.floor((new Date()-d.birth)/(365*86400000))).as(\"age\")).keyBy(x=>x.id)" //
+								+ "\n.leftJoin(d.select(\"*\").keyBy(x=>x.id))" //
+								+ "\n.mapJoint((l,r) => Canal.row(Canal.Some(l).$(\"*\"),r.$(\"month\"),r.$(\"salary\")))" //
 								+ "\n.window(Canal.wf.sum(d=>d.salary).partBy(d=>d.dept).as(\"sum_sal\"))" //
+								+ "\n.sortBy($(\"id\"))" //
 								+ "\n.collect()",
 						editor : null,
 						error : null,
@@ -190,6 +191,7 @@ span.button {
 							"csv" : new RegExp("\\s*,\\s*", "g"),
 							"tsv" : new RegExp("\t", "g")
 						},
+						headParser : new RegExp("^(.+?)(\\s*:\\s*(int|float|number|date))?\\s*$", "i"),
 						lineSplit : new RegExp("\n", "g")
 					},
 					mounted : function()
@@ -330,33 +332,37 @@ span.button {
 						},
 						rows : function(src)
 						{
+							var self = this;
+
 							var lines = this.lines(src.raw);
 							if ("raw" == src.type || lines.length == 0)
 							{
 								return lines;
 							}
 
-							var head = null;
+							var heads = null, types = null;
 							if (src.head == "true")
 							{
-								head = this.split(lines[0], src.type);
+								heads = Canal.of(this.split(lines[0], src.type)).map(function(h)
+								{
+									return self.parseHeader(h);
+								}).collect();
 							}
 
-							var self = this;
 							var canal = Canal.of(lines);
-							if (head != null)
+							if (heads != null)
 							{
 								canal = canal.skip(1);
 							}
 							return canal.map(function(line)
 							{
 								var row = self.split(line, src.type);
-								if (head != null)
+								if (heads != null)
 								{
 									var r = {};
-									for (var i = 0; i < head.length; i++)
+									for (var i = 0; i < heads.length; i++)
 									{
-										r[head[i]] = row[i];
+										r[heads[i][0]] = self.convertData(row[i], heads[i][1]);
 									}
 									row = r;
 								}
@@ -382,6 +388,67 @@ span.button {
 							{
 								return line.split(split);
 							}
+						},
+						parseHeader : function(head)
+						{
+							return [ head.replace(this.headParser, "$1"), head.replace(this.headParser, "$3") ];
+						},
+						convertData : function(text, type)
+						{
+							if (type == null)
+							{
+								return text;
+							}
+							type = type.toLowerCase();
+							switch (type.toLowerCase())
+							{
+								case "int":
+									return parseInt(text);
+								case "float":
+								case "number":
+									return parseFloat(text);
+								case "date":
+									return new Date(text);
+									break;
+								default:
+									return text;
+							}
+						},
+						textOfCell : function(val)
+						{
+							if (val instanceof Date)
+							{
+								return this.formatDate(val, "yyyy-MM-dd HH:mm:ss");
+							}
+							else
+							{
+								return val;
+							}
+						},
+						formatDate : function(date, fmt)
+						{
+							var o = {
+								"M+" : date.getUTCMonth() + 1,
+								"d+" : date.getUTCDate(),
+								"H+" : date.getUTCHours(),
+								"m+" : date.getUTCMinutes(),
+								"s+" : date.getUTCSeconds(),
+								"q+" : Math.floor((date.getUTCMonth() + 3) / 3),
+								"S" : date.getUTCMilliseconds()
+							};
+							if (/(y+)/.test(fmt))
+							{
+								fmt = fmt.replace(RegExp.$1, (date.getUTCFullYear() + "").substr(4 - RegExp.$1.length));
+							}
+							for ( var k in o)
+							{
+								if (new RegExp("(" + k + ")").test(fmt))
+								{
+									fmt = fmt.replace(RegExp.$1, (RegExp.$1.length == 1) ? (o[k]) : (("00" + o[k])
+											.substr(("" + o[k]).length)));
+								}
+							}
+							return fmt;
 						},
 						stylesOfCell : function(val)
 						{
