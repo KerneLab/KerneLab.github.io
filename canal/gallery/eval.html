@@ -179,8 +179,8 @@ span.button {
 							"head" : "true"
 						} ],
 						expr : "c.select(\"*\",$(d=>Math.floor((new Date()-d.birth)/(365*86400000))).as(\"age\")).keyBy(x=>x.id)" //
-								+ "\n.leftJoin(d.select(\"*\").keyBy(x=>x.id))" //
-								+ "\n.mapJoint((l,r) => Canal.row(Canal.Some(l).$(\"*\"),r.$(\"month\"),r.$(\"salary\")))" //
+								+ "\n.leftJoin(d.select($(\"id\"),$(\"month\").as(\"yearMon\"),$(r=>r.salary).as(\"salary\")).keyBy(x=>x.id))" //
+								+ "\n.mapJoint((l,r) => Canal.row(Canal.Some(l).$(\"*\"),r.$(\"yearMon\"),r.$(\"salary\")))" //
 								+ "\n.window(Canal.wf.sum(d=>d.salary).partBy(d=>d.dept).as(\"sum_sal\"))" //
 								+ "\n.sortBy($(\"id\"))" //
 								+ "\n.collect()",
@@ -408,7 +408,14 @@ span.button {
 								case "number":
 									return parseFloat(text);
 								case "date":
-									return new Date(text);
+									if (text.match(/\d+:\d+:\d+/))
+									{
+										return new Date(text);
+									}
+									else
+									{
+										return new Date(text + " 00:00:00");
+									}
 									break;
 								default:
 									return text;
@@ -418,7 +425,16 @@ span.button {
 						{
 							if (val instanceof Date)
 							{
-								return this.formatDate(val, "yyyy-MM-dd HH:mm:ss");
+								var txt = this.formatDate(val, "yyyy-MM-dd HH:mm:ss.SSS");
+								if (/(\.000)/.test(txt))
+								{
+									txt = txt.replace(RegExp.$1, "");
+									if (/(\s+00:00:00)/.test(txt))
+									{
+										txt = txt.replace(RegExp.$1, "");
+									}
+								}
+								return txt;
 							}
 							else
 							{
@@ -430,11 +446,11 @@ span.button {
 							var o = {
 								"M+" : date.getUTCMonth() + 1,
 								"d+" : date.getUTCDate(),
-								"H+" : date.getUTCHours(),
+								"H+" : date.getHours(),
 								"m+" : date.getUTCMinutes(),
 								"s+" : date.getUTCSeconds(),
 								"q+" : Math.floor((date.getUTCMonth() + 3) / 3),
-								"S" : date.getUTCMilliseconds()
+								"S+" : date.getUTCMilliseconds()
 							};
 							if (/(y+)/.test(fmt))
 							{
@@ -445,7 +461,7 @@ span.button {
 								if (new RegExp("(" + k + ")").test(fmt))
 								{
 									fmt = fmt.replace(RegExp.$1, (RegExp.$1.length == 1) ? (o[k]) : (("00" + o[k])
-											.substr(("" + o[k]).length)));
+											.substr(("00" + o[k]).length - RegExp.$1.length)));
 								}
 							}
 							return fmt;
