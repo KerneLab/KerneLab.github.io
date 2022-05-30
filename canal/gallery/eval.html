@@ -63,6 +63,10 @@ span.button {
 	cursor: pointer;
 }
 
+.duplicate {
+	background-color: #FCC;
+}
+
 .fixedhead {
 	top: -1px;
 	position: sticky;
@@ -92,10 +96,10 @@ span.button {
 							<tr>
 								<td class="grid">
 									<table class="frame" style="width: 100%">
-										<tr>
+										<tr :class="{'duplicate':dupSrc[i]}">
 											<td align="left" class="frame" style="width: 75%"><input
-												v-model="s.id" class="cell" style="float: left; width: 100%"
-												type="text" /></td>
+												v-model="s.id" class="cell" :class="{'duplicate':dupSrc[i]}"
+												style="float: left; width: 100%" type="text" /></td>
 											<td align="right" class="frame"><span class="button"
 												@click="append(i)"
 												style="font-size: 14px; font-weight: bold" title="Append">＋&nbsp;</span><span
@@ -214,6 +218,19 @@ span.button {
 						});
 					},
 					computed : {
+						dupSrc : function()
+						{
+							return Canal.of(this.src).map(function(d, i)
+							{
+								return [ d.id, i ];
+							}).groupByKey().having(function(g)
+							{
+								return g.length > 1;
+							}).values().flatMap().map(function(d)
+							{
+								return [ d, true ];
+							}).collectAsMap()
+						},
 						ctx : function()
 						{
 							var self = this;
