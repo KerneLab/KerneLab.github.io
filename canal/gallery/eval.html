@@ -320,6 +320,10 @@ span.button {
 						remove : function(i)
 						{
 							this.src.splice(i, 1);
+							if (this.src.length == 0)
+							{
+								this.append(0);
+							}
 						},
 						lines : function(raw)
 						{
