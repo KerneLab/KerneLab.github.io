@@ -15,8 +15,8 @@
 <link rel="stylesheet"
 	href="https://unpkg.com/codemirror@5/theme/eclipse.css">
 <style>
-body, div, textarea, span, th, td, a:link, a:visited, a:hover, a:active
-	{
+body, div, textarea, span, th, td, input, select, option, a:link, a:visited,
+	a:hover, a:active {
 	font-size: 12px;
 	color: #000;
 }
@@ -51,7 +51,7 @@ table.grid, th.grid, td.grid {
 }
 
 th.grid, td.grid {
-	height: 23px;
+	height: 20px;
 	padding: 2px;
 }
 
@@ -84,11 +84,11 @@ span.button {
 
 	<div id="main">
 		<div class="part" style="width: 100%; overflow-x: auto">
-			<table class="frame" style="width: 100%;">
+			<table class="frame" style="width: 100%">
 				<tr valign="top">
 					<td v-for="(s,i) in src" :key="i" class="frame"
-						style="min-width: 220px; padding-right: 2px;">
-						<table class="grid" style="width: 100%;">
+						style="padding-right: 2px">
+						<table class="grid" style="width: 100%">
 							<tr>
 								<td class="grid">
 									<table class="frame" style="width: 100%">
@@ -107,20 +107,22 @@ span.button {
 							</tr>
 							<tr>
 								<td class="grid"><textarea v-model="s.raw" class="cell"
-										rows="8" wrap="off" style="width: 100%; overflow: auto;"></textarea>
+										rows="8" wrap="off"
+										style="width: 100%; min-width: 220px; overflow: auto"></textarea>
 								</td>
 							</tr>
 							<tr>
 								<td class="grid">
 									<table class="frame" style="width: 100%">
-										<tr>
-											<td align="left" class="frame"><label
-												v-for="(t,j) in types" :key="j"><input
-													v-model="s.type" type="radio" :value="t" />{{ t }}</label> <label><input
+										<tr valign="middle">
+											<td align="left" class="frame"><select v-model="s.type">
+													<option v-for="(t,j) in types" :key="j" :value="t">
+														{{ t }}</option>
+											</select> <label style="display: inline-block; vertical-align: middle"><input
 													v-model="s.head" type="checkbox" true-value="true"
-													false-value="false" />head</label></td>
+													false-value="false" style="margin: 0px 1px 0px 2px"
+													:disabled="splitor[s.type]==null" />head</label></td>
 											<td align="right" class="frame"><a
-												style="vertical-align: middle"
 												href="https://github.com/KerneLab/Canal/wiki/API_Reference_CN"
 												target="_blank">help</a></td>
 										</tr>
@@ -133,7 +135,7 @@ span.button {
 			</table>
 		</div>
 		<div class="part">
-			<textarea v-model="expr" ref="exprText" rows="6" style="width: 100%;"></textarea>
+			<textarea v-model="expr" ref="exprText" rows="6" style="width: 100%"></textarea>
 		</div>
 		<div class="part" style="color: #F00">{{ error }}</div>
 		<div class="part">
@@ -186,7 +188,7 @@ span.button {
 								+ "\n.collect()",
 						editor : null,
 						error : null,
-						types : [ "raw", "csv", "tsv" ],
+						types : [ "raw", "csv", "tsv", "json" ],
 						splitor : {
 							"csv" : new RegExp("\\s*,\\s*", "g"),
 							"tsv" : new RegExp("\t", "g")
@@ -338,6 +340,14 @@ span.button {
 							if ("raw" == src.type || lines.length == 0)
 							{
 								return lines;
+							}
+
+							if ("json" == src.type)
+							{
+								return Canal.of(lines).map(function(line)
+								{
+									return JSON.parse(line);
+								});
 							}
 
 							var heads = null, types = null;
