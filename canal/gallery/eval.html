@@ -184,7 +184,7 @@ span.button {
 							"type" : "csv",
 							"head" : "true"
 						} ],
-						expr : "c.select(\"*\",$(d=>Math.floor((new Date()-d.birth)/(365*86400000))).as(\"age\")).keyBy(x=>x.id)" //
+						expr : "c.select(\"*\",$(d=>Math.floor((new Date()-d.birth)/(365*86400*1000))).as(\"age\")).keyBy(x=>x.id)" //
 								+ "\n.leftJoin(d.select($(\"id\"),$(\"month\").as(\"yearMon\"),$(r=>r.salary).as(\"salary\")).keyBy(x=>x.id))" //
 								+ "\n.mapJoint((l,r) => Canal.row(Canal.Some(l).$(\"*\"),r.$(\"yearMon\"),r.$(\"salary\")))" //
 								+ "\n.window(Canal.wf.sum(d=>d.salary).partBy(d=>d.dept).as(\"sum_sal\"))" //
