@@ -186,8 +186,8 @@ span.button {
 						} ],
 						expr : "c.select(\"*\",$(d=>Math.floor((new Date()-d.birth)/(365*86400*1000))).as(\"age\")).keyBy(x=>x.id)" //
 								+ "\n.leftJoin(d.select($(\"id\"),$(\"month\").as(\"yearMon\"),$(r=>r.salary).as(\"salary\")).keyBy(x=>x.id))" //
-								+ "\n.mapJoint((l,r) => Canal.row(Canal.Some(l).$(\"*\"),r.$(\"yearMon\"),r.$(\"salary\")))" //
-								+ "\n.window(Canal.wf.sum(d=>d.salary).partBy(d=>d.dept).as(\"sum_sal\"))" //
+								+ "\n.mapJoint((l,r) => Canal.row(Option(l).$(\"*\"),r.$(\"yearMon\"),r.$(\"salary\")))" //
+								+ "\n.window(wf.sum(d=>d.salary).partBy(d=>d.dept).as(\"sum_sal\"))" //
 								+ "\n.sortBy($(\"id\"))" //
 								+ "\n.collect()",
 						editor : null,
@@ -243,6 +243,8 @@ span.button {
 							}).collectAsMap();
 
 							ctx["$"] = Canal.col;
+							ctx["wf"] = Canal.wf;
+							ctx["Option"] = Canal.Option;
 
 							return ctx;
 						},
