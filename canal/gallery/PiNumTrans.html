@@ -53,6 +53,14 @@
 						"total" : 0
 					};
 
+					var sleep = function(millis)
+					{
+						return new Promise(function(res)
+						{
+							setTimeout(res, millis);
+						});
+					};
+
 					var pairs = Canal.of(source, function(c)
 					{
 						if (count.total >= data.length - 1)
@@ -64,39 +72,27 @@
 					.map(function(d)
 					{
 						return d[0] + "-" + d[1];
-					});
-
-					var skips = 0, limit = 1000;
-
-					var calc = function()
+					}).batch(1000, function(c)
 					{
-						count = pairs.skip(skips).limit(limit) //
-						.fold(count, function(last, d)
+						sleep(500).then(function()
 						{
-							var l = last[d];
-							if (l == null)
+							count = c.fold(count, function(last, d)
 							{
-								l = 0;
-							}
-							l++;
-							last[d] = l;
-							last.total++;
-							return last;
+								var l = last[d];
+								if (l == null)
+								{
+									l = 0;
+								}
+								l++;
+								last[d] = l;
+								last.total++;
+								return last;
+							});
+
+							self.trans = count;
+							self.total = count.total;
 						});
-
-						self.trans = count;
-						self.total = count.total;
-
-						skips += limit;
-
-						if (goon)
-						{
-							setTimeout(calc, 0);
-						}
-					};
-
-					setTimeout(calc, 0);
-
+					});
 				}, "json");
 			},
 			computed : {
