@@ -72,9 +72,9 @@
 					.map(function(d)
 					{
 						return d[0] + "-" + d[1];
-					}).batch(1000).foreach(function(c)
+					}).batch(100).foreach(function(c)
 					{
-						sleep(500).then(function()
+						sleep(1000).then(function()
 						{
 							count = c.fold(count, function(last, d)
 							{
