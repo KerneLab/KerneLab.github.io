@@ -72,7 +72,7 @@
 					.map(function(d)
 					{
 						return d[0] + "-" + d[1];
-					}).batch(100).foreach(function(c)
+					}).slice(100).foreach(function(c)
 					{
 						sleep(1000).then(function()
 						{
