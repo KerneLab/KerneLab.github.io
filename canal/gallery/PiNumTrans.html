@@ -76,7 +76,7 @@
 					{
 						sleep(1000).then(function()
 						{
-							count = c.fold(count, function(last, d)
+							count = Canal.of(c).fold(count, function(last, d)
 							{
 								var l = last[d];
 								if (l == null)
