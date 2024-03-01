@@ -278,20 +278,45 @@ span.button {
 								return null;
 							}
 
-							var h = res[0];
-							if ($.isPlainObject(h))
+							var heads = Canal.of(res).map(function(d)
 							{
-								var head = [];
-								for ( var k in h)
+								if (d == null || typeof (d) != "object" || $.isArray(d))
 								{
-									head.push(k);
+									return null;
 								}
-								return head;
-							}
-							else
+								var h = [];
+								for ( var k in d)
+								{
+									if (d.hasOwnProperty(k))
+									{
+										h.push(k);
+									}
+								}
+								return h.length > 0 ? h : null;
+							}).collect();
+
+							var head = [];
+							var map = {};
+
+							for (var i = 0, h = null; i < heads.length; i++)
 							{
-								return null;
+								h = heads[i];
+								if (h == null)
+								{
+									return null;
+								}
+								for (var j = 0, d = null; j < h.length; j++)
+								{
+									d = h[j];
+									if (!map[d])
+									{
+										head.push(d);
+										map[d] = true;
+									}
+								}
 							}
+
+							return head;
 						},
 						tableBody : function()
 						{
