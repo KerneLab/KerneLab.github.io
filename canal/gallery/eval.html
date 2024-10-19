@@ -122,10 +122,16 @@ span.button {
 											<td align="left" class="frame"><select v-model="s.type">
 													<option v-for="(t,j) in types" :key="j" :value="t">
 														{{ t }}</option>
-											</select> <label style="display: inline-block; vertical-align: middle"><input
+											</select> <label style="display: inline-block; vertical-align: middle"
+												title="Parse data line with head of first line"><input
 													v-model="s.head" type="checkbox" true-value="true"
 													false-value="false" style="margin: 0px 1px 0px 2px"
-													:disabled="splitor[s.type]==null" />head</label></td>
+													:disabled="splitor[s.type]==null" />head</label> <label
+												style="display: inline-block; vertical-align: middle"
+												title="Check parse result and discard bad ones"><input
+													v-model="s.check" type="checkbox" true-value="true"
+													false-value="false" style="margin: 0px 1px 0px 2px"
+													:disabled="checker[s.type]==null" />check</label></td>
 											<td align="right" class="frame"><a
 												href="https://github.com/KerneLab/Canal/wiki/API_Reference_CN"
 												target="_blank">help</a></td>
@@ -173,7 +179,8 @@ span.button {
 									+ "\n4\tA\ttim\tM\t1992-11-01" //
 									+ "\n5\tB\tlucy\tF\t1990-09-27",
 							"type" : "tsv",
-							"head" : "true"
+							"head" : "true",
+							"check" : "true"
 						}, {
 							"id" : "d",
 							"raw" : "id, month, salary:float" //
@@ -182,7 +189,8 @@ span.button {
 									+ "\n3, 202101, 6800.00" //
 									+ "\n4, 202101, 7200.00",
 							"type" : "csv",
-							"head" : "true"
+							"head" : "true",
+							"check" : "true"
 						} ],
 						expr : "c.select(\"*\",$(d=>Math.floor((new Date()-d.birth)/(365*86400*1000))).as(\"age\")).keyBy(x=>x.id)" //
 								+ "\n.leftJoin(d.select($(\"id\"),$(\"month\").as(\"yearMon\"),$(r=>r.salary).as(\"salary\")).keyBy(x=>x.id))" //
@@ -198,7 +206,12 @@ span.button {
 							"tsv" : new RegExp("\t", "g")
 						},
 						headParser : new RegExp("^(.+?)(\\s*:\\s*(int|float|number|date))?\\s*$", "i"),
-						lineSplit : new RegExp("\n", "g")
+						lineSplit : new RegExp("\n", "g"),
+						checker : {
+							"json" : true,
+							"csv" : true,
+							"tsv" : true
+						}
 					},
 					mounted : function()
 					{
@@ -359,7 +372,8 @@ span.button {
 								"id" : String.fromCharCode("c".charCodeAt(0) + this.src.length),
 								"raw" : "",
 								"type" : "csv",
-								"head" : "true"
+								"head" : "true",
+								"check" : "true"
 							});
 						},
 						remove : function(i)
@@ -385,24 +399,46 @@ span.button {
 						{
 							var self = this;
 
+							var type = src.type;
+
 							var lines = this.lines(src.raw);
-							if ("raw" == src.type || lines.length == 0)
+							if ("raw" == type || lines.length == 0)
 							{
 								return lines;
 							}
 
-							if ("json" == src.type)
+							var check = src.check == "true" && this.checker[type] != null;
+							var bad = {};
+
+							if ("json" == type)
 							{
 								return Canal.of(lines).map(function(line)
 								{
-									return JSON.parse(line);
+									try
+									{
+										return JSON.parse(line);
+									}
+									catch (e)
+									{
+										if (check)
+										{
+											return bad;
+										}
+										else
+										{
+											throw e;
+										}
+									}
+								}).filter(function(d)
+								{
+									return !check || d != bad;
 								});
 							}
 
 							var heads = null, types = null;
 							if (src.head == "true")
 							{
-								heads = Canal.of(this.split(lines[0], src.type)).map(function(h)
+								heads = Canal.of(this.split(lines[0], type)).map(function(h)
 								{
 									return self.parseHeader(h);
 								}).collect();
@@ -413,19 +449,37 @@ span.button {
 							{
 								canal = canal.skip(1);
 							}
+
 							return canal.map(function(line)
 							{
-								var row = self.split(line, src.type);
-								if (heads != null)
+								try
 								{
-									var r = {};
-									for (var i = 0; i < heads.length; i++)
+									var row = self.split(line, type);
+									if (heads != null)
 									{
-										r[heads[i][0]] = self.convertData(row[i], heads[i][1]);
+										var r = {};
+										for (var i = 0; i < heads.length; i++)
+										{
+											r[heads[i][0]] = self.convertData(row[i], heads[i][1]);
+										}
+										row = r;
 									}
-									row = r;
+									return row;
 								}
-								return row;
+								catch (e)
+								{
+									if (check)
+									{
+										return bad;
+									}
+									else
+									{
+										throw e;
+									}
+								}
+							}).filter(function(row)
+							{
+								return !check || row != bad;
 							});
 						},
 						eval : function(code, ctx)
